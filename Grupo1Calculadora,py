@@ -1,0 +1,425 @@
+from tkinter import*
+from sympy import*
+import sympy as sym
+from numpy import*
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
+from matplotlib.figure import Figure
+from matplotlib import style
+import matplotlib.animation as anim
+import re
+
+ventana=Tk()
+ventana.geometry("1000x800")
+ventana.title("Grupo 1 EDOS")
+ventana.resizable(False,False)
+ventana.configure(background="steelblue")
+style.use('fivethirtyeight')
+
+i = 0
+entrada_pant1=StringVar()
+entrada_pant2=StringVar()
+entrada_pant3=StringVar()
+entrada_pant4=StringVar()
+entrada_pant5=StringVar()
+entrada_pant6=StringVar()
+entrada_pant7=StringVar()
+
+#Permitira ingresar y mostrar la cadena de texto
+pantalla=Entry(ventana, font="arial 20", width="26", textvariable=entrada_pant1, background="white", borderwidth="3")#Ventana que permite ingresar la cadena de texto
+pantalla.place(x=10, y=25)#Entrada de texto se muestra en la pantalla con la ubicacion asignada
+pantalla_graf=Entry(ventana, font="arial 20", width="24" ,background="lightgray",textvariable=entrada_pant7)#Resultado graficamente
+pantalla_graf.place(x=10, y=410, relheight=0.45)#La grafica se muestra en la pantalla con la ubicacion asignada
+pantalla3=Entry(ventana, font="arial 16", width="33", borderwidth="0", textvariable=entrada_pant2, background="white")#Resultado calculado de la cadena de texto
+pantalla3.place(x=500, y=150, relheight=0.20)#El resultado se muestra en la pantalla con la ubicacion asignadaf
+condicion_x=Entry(ventana, font="arial 20", width="3", borderwidth="3", background="white")#cadena de texto numero para x
+condicion_x.place(x=595, y=490, relheight=0.07)#Entrada de numero para x se muestra en la pantalla con la ubicacion asignada
+condicion_y=Entry(ventana, font="arial 20", width="3", borderwidth="3", background="white")#cadena de texto numero para y
+condicion_y.place(x=595, y=549, relheight=0.07)#Entrada de numero para y se muestra en la pantalla con la ubicacion asignada
+entra_funcion=Entry(ventana, font="arial 20",width="16",background="white",borderwidth="3",textvariable=entrada_pant7)#Ventana que permite ingresar cadena de texto
+
+#Labels
+texto3=Label(ventana, font="arial 12 bold", text="Número para 'x'  =", justify="left")#cadena de texto3
+texto3.place(x=420, y=487)#Se muestra texto3 en la pantalla con la ubicacion asignada
+texto4=Label(ventana, font="arial 12 bold", text="Número para 'y'  =", justify="left")#cadena de texto4
+texto4.place(x=420, y=549)#Se muestra texto4 en la pantalla con la ubicacion asignada
+texto5=Label(ventana, font="arial 12 bold", text="Calculadora de EDO - Grupo 1", justify="left")#cadena de texto3
+texto5.place(x=500, y=25)
+#Metodos
+#ingresa datos por teclado
+def ingreso_datos(valor):
+    global i 
+    i = pantalla.index(INSERT)#posicion del cursor
+    pantalla.insert(i,valor)#Ingreso de la cadena de texto
+
+#Operaciones matematicas
+def operaciones(valor):
+    global i 
+    i = pantalla.index(INSERT)#Posicion del cursor
+    pantalla.insert(i,valor)#Ingreso de la cadena de texto
+    
+#Borra toda la informacion
+def borrar_todo():
+    pantalla.delete(0,END)#Funcion para eliminar todo el texto
+
+#Borra informacion por informacion
+def borrar():
+    global i
+    pantalla_texto=pantalla.get()#Obtiene cadena de texto de la ventana pantalla
+    pos_actual=int(pantalla.index(INSERT))#Pocisión actual del cursor
+    if len(pantalla_texto) > 0 and pos_actual > 0:#condicion
+        pos_final = pantalla_texto[:pos_actual-1] + pantalla_texto[pos_actual:]#Elimina el caracter en la posición del cursor
+        borrar_todo()#Limpia la ventana para reemplazar por el nuevo texto
+        pantalla.insert(0, pos_final)#Muentra el nuevo texto
+        pos_actual -= 1 #Disminuye la posición del cursor
+        pantalla.icursor(pos_actual) #Mueve el cursor a la nueva posición        
+  
+#Grafica la funcion 
+fig = Figure(figsize=(4,3), dpi=60)#Crea la figura
+fig.patch.set_facecolor("white")#Define el color del contenedor
+ax = fig.add_subplot(111)#Crea un subgrafico a la figura
+ax.set_facecolor("white")#Define el color de la figura
+
+canvas1 = FigureCanvasTkAgg(fig, pantalla_graf)#Define la pantalla en donde aparecera la gráfica
+canvas1.draw()#Dibuja la gráfica de la función
+canvas1.get_tk_widget().place(x=0,y=0, relwidth=1, relheight=0.85)#Ubicacion de la grafica
+
+#Metodos para Funciones trigonometricas 
+def cot(x):
+    return 1/tan(x)
+
+def csc(x):
+    return 1/sin(x)
+
+def acot(x):
+    return pi/2 - arctan(x)
+
+def acsc(x):
+    return arcsin(1/x)
+
+#Define los valores maximos y minimos
+rango1 = False
+rango2 = ""
+rango3 = ""
+
+#Diccionario de funciones 
+fun = {
+    "sin": sin, "cos": cos, "tan": tan, "cot": cot,
+    "csc": csc, "sec": lambda x: 1/cos(x),
+    "sqrt": sqrt, "exp": exp, "log": log, "pi": pi,
+    "asin": arcsin, "acos": arccos, "atan": arctan, 
+    "acot": acot, "acsc": acsc, "asec": lambda x: arccos(1/x),
+}
+
+#Funcion para reemplazar a la Funcion
+def reemplazo(f):
+    for i in fun:
+        if i in f:
+            f = f.replace(i, "fun['{}']".format(i))#Reemplaza la cadena de texto por una función 
+    return f
+
+#Funcion para animar a la grafica
+def animacion(funcion):
+    global rango1
+    global rango2
+    if rango1 == True:
+        try:
+            #rango3 en una lista contiene valores maximos y minimos del rango
+            valor_minimo = float(rango3[0])
+            valor_maximo = float(rango3[1])
+            if valor_minimo < valor_maximo:
+                x = arange(valor_minimo, valor_maximo, 0.01)#X el valor minimo hasta llegar a un maximo
+                rango2 = [valor_minimo, valor_maximo]#Actualiza el rango2 con valores minimos y maximos
+                entrada_pant6.set('')#limpia entrada de la pantalla6
+            else:
+                rango1 = False
+                entrada_pant6.set('')#limpia entrada de la pantalla6
+                mensaje_error="Rango Incorrecto"#Mensaje de error
+        except:
+            entrada_pant6.set('')#limpia entrada de la pantalla6
+            mensaje_error="Rango Incorrecto"#Mensaje de error
+            rango1 = False
+    else:
+        if rango2 != "":
+            x = arange(rango2[0], rango2[1], 0.01)#Genera un arreglo en x desde valor minimo a maximo usando valores de rango2
+        else: 
+            x = arange(0, 10, 0.01)#Genera un arreglo de 0 hasta 10
+    try:
+        sol = eval(grafico)#Evalua la función y asigna a sol
+        ax.clear()#Limpia el eje actual
+        ax.plot(x, sol, label=entra_funcion.get())#Agrega la funcion a ser graficada
+        ax.legend()#Agrega la etiqueta al grfico
+    except:
+        ax.plot()#Ocurre un error inesperado limpia el contenedor de la gráfica
+    ax.axhline(0, color="gray")#Agrega una linea horizontal al grafico y=0
+    ax.axvline(0, color="gray")#Agrega una linea vertical al grafico x=0
+    ani.event_source.stop()#Detiene la animación
+
+#Funcion para presentar la grafica
+def representacion():
+    global grafico
+    global rango3
+    global rango1
+    tx_origl = entra_funcion.get()#La cadena de texto se le asigna a una nueva variable
+    grafico = reemplazo(tx_origl)#Convierte la cadena de texto a una funcion matemática
+    ani.event_source.start()#Inicializa la animación de la gráfica
+ani = anim.FuncAnimation(fig, animacion, interval=1000, cache_frame_data=False)
+     
+#Metodo para agregar parentesis
+def Parentesis(expresion):
+    funciones_trigonom = ['sin', 'cos', 'tan', 'cot', 'sec', 'csc','asin', 'acos', 'atan', 'acot', 'asec', 'acsc']
+    funciones_log_exp = ['log', 'exp']
+    funcion_raiz = ['sqrt']
+    # Función para manejar las funciones específicas
+    def manejar_funciones(match_obj):
+        return f"{match_obj.group(1)}({match_obj.group(2)})"
+    # Agrega paréntesis a funciones trigonométricas
+    for funcion in funciones_trigonom:
+        expresion = re.sub(f'({funcion})(-?[a-z]+)', manejar_funciones, expresion, flags=re.IGNORECASE)
+    # Agrega paréntesis a funciones logarítmicas y exponenciales
+    for funcion in funciones_log_exp:
+        expresion = re.sub(f'({funcion})(-?[0-9]*[a-z]+)', manejar_funciones, expresion, flags=re.IGNORECASE)
+    # Agrega paréntesis a funciones de raíz
+    for funcion in funcion_raiz:
+        expresion = re.sub(f'({funcion})(-?[0-9]*[a-z]+)', manejar_funciones, expresion, flags=re.IGNORECASE)
+    #Agregar parentesis a funciones combinadas
+    expresion = re.sub(r'(log)(-?[0-9]+)(\*[a-z]+)', r'\1(\2\3)', expresion, flags=re.IGNORECASE)   
+    expresion = re.sub(r'(exp)(-?[0-9]+)(\*[a-z]+)', r'\1(\2\3)', expresion, flags=re.IGNORECASE) 
+    expresion = re.sub(r'(sqrt)(-?[0-9]+)(\*[a-z]+)', r'\1(\2\3)', expresion, flags=re.IGNORECASE)
+    expresion = re.sub(r'(cos|sin|tan|cot|sec|csc|asin|acos|atan|acot|asec|acsc)(-?[0-9]+)(\*[a-z]+)', r'\1(\2\3)', expresion, flags=re.IGNORECASE)  
+    return expresion
+
+#Funcion para resolver EDO
+def calcularEdo():
+    entrada_pant2.set('')#limpia entrada de la pantalla2
+    entrada_pant3.set('')#limpia entrada de la pantalla3
+    edo=pantalla.get()#Asignación de la expresion a la variable edo
+    #Realización de ciertos reemplazos en la expresión original
+    edo_expr = (edo.replace("y","y(x)"))
+    edo_expr = (edo_expr.replace("=",""))
+    edo_expr = (edo_expr.replace("0",""))
+    edo_expr = (edo_expr.replace("dy(x)/dx","y(x).diff(x)"))
+    edo_expr = (edo_expr.replace("d2y(x)/dx2","y(x).diff(x,2)"))
+    edo_expr = (edo_expr.replace("d3y(x)/dx3","y(x).diff(x,3)"))
+    edo_expr = edo_expr.replace("^","**")
+    edo_expr = edo_expr.replace("^2","**2")
+    edo_expr = edo_expr.replace("^3","**3")
+    edo_expr = edo_expr.replace("e^","exp")
+    if(edo!=""):
+        try:
+            edo1=sympify(edo_expr)#Convierte a la cadena de texto en una expresión matemática
+            ecuacion_diferencial = Eq(edo1,0)#Iguala a la ecuacion diferencial a 0
+            r=dsolve(ecuacion_diferencial)#Resuelve la ecuacion diferencial
+            r1=str(r)#Convierte a la solucion en una cadena de texto
+            #Realización de ciertos reemplazos en la solución
+            r1 = (r1.replace("Eq",""))
+            r1 = (r1.replace("y(x)","y"))
+            r1 = (r1.replace(",", " ="))
+            r1 = (r1.replace(")", ""))
+            r1 = (r1.replace("(", ""))
+            r1 = (r1.replace("**","^"))
+            r1 = (r1.replace("/log(e)",""))
+            r1 = (r1.replace("log(e)","1"))
+            r1 = (r1.replace("loge","1"))
+            r1 = (r1.replace("Piecewise",""))
+            r1 = (r1.replace("+ -","- "))
+            r1 = (r1.replace("--", "+ "))
+            r1 = (r1.replace("+-", " - "))
+            r1 = (r1.replace("- -", "+ "))
+            r1 = (r1.replace("= Ne1 = 0 = x = True",""))
+            r1 = (r1.replace("= Ne1 = 0 = -x = True",""))
+            r1 = (r1.replace("= Nelog(e) = 0 = x = True",""))
+            r1 = (r1.replace("= Nelog(e) = 0 = -x = True",""))
+            r1 = (r1.replace("e^","exp"))
+            r1=Parentesis(r1)#Inserta parentesis a la solución
+            r1 = (r1.replace("exp","e^"))
+            r1 = (r1.replace("sqrt1 + x^2","sqrt((x)**2+1)"))
+            r1 = (r1.replace("sqrt1 - x^2","sqrt((-x)**2+1)"))
+            pantalla3.insert(0,r1)#Muestra el resultado final de la EDO en la pantalla3
+            mensaje="EDO ES:"
+            entrada_pant7.set('')#limpia entrada de la pantalla7
+            #Realización de ciertos reemplazos en la solución
+            r1 = (r1.replace("y", ""))
+            r1 = (r1.replace("=", ""))
+            r1 = (r1.replace("^", "**"))
+            r1 = (r1.replace("e**", "exp"))
+            r1 = (r1.replace("C1", "1"))
+            entra_funcion.insert(0,r1)#Asigna la solucion a la entrada de graficar
+            entrada_pant6.set('')#limpia entrada de la pantalla6
+            mensaje="SUPONIENDO C1 ES: 1"
+        except Exception:
+            men_error="ERROR AL RESOLVER EDO" 
+    else:
+        entrada_pant3.set('')#limpia entrada de la pantalla3
+        entrada_pant2.set('')#limpia entrada de la pantalla2
+        men_error="INGRESE EDO Y CALCULE"
+
+#Condiciones Iniciales EDO
+def Condiciones_Iniciales():
+    x, C1 = symbols("x C1")#Variable x y C1 en forma de simbolos
+    con_y=condicion_y.get()#Asignación de numero de la variable y
+    con_x=condicion_x.get()#Asignación de numero de la variable x
+    sol1=pantalla3.get()#Asignación de la expresion a la variable sol1
+    try:
+        #Realización de ciertos reemplazos en la expresión original
+        sol2 = (sol1.replace("^","**"))
+        sol2 = (sol2.replace("y", ""))
+        sol2 = (sol2.replace("=", ""))
+        sol2 = (sol2.replace(")", ""))
+        sol2 = (sol2.replace("(", ""))
+        sol2 = (sol2.replace("+ -", "- "))
+        sol2 = (sol2.replace("- -", "+ "))
+        sol2 = (sol2.replace("--", "+ "))
+        sol2 = (sol2.replace("e**","exp"))
+        sol2 = (sol2.replace("sqrt1 + x^2","sqrt((x)**2+1)"))
+        sol2 = (sol2.replace("sqrt1 - x^2","sqrt((-x)**2+1)"))
+        sol2 = Parentesis(sol2)#Inserta parentesis en la expresión original
+        sol2 = (sol2.replace("log(e)","1"))
+        y = sol2
+        if (sol1!=""):
+            if(sol2!="")and(con_x!="")and(con_y!=""):
+                sol = simplify(y)#Convierte a la cadena de texto en una expresión matemática
+                con_x = float(con_x)#convierte el texto de x a valor numérico
+                con_y = float(con_y)#convierte el texto de y a valor numérico
+                r=solve(sol.subs(x,con_x)-con_y,(C1))#Resuelve la funcion en base a C1
+                r=str(r)#Funcion resuelta convertida a cadena de texto
+                #Realización de ciertos reemplazos en la solución
+                r=r.replace("[","")
+                r=r.replace("]","")
+                r=r.replace("+ -","- ")
+                r=r.replace("- -", "+ ")
+                r=r.replace("**","^")
+                r=Parentesis(r)#Inserta parentesis a la solución
+                r=r.replace("log(e)","1")
+                rfinal=float(r)#Valor de C en flotante
+                rfinal=round(rfinal,2)#Redondea hasta solo dos decimales el valor de C
+                rfinal=str(rfinal)#el valor de C convertido a una cadena de caracteres
+                #Realización de ciertos reemplazos en la solución
+                sol1= (sol1.replace("C1",rfinal))#Reemplaza el valor de C
+                sol1 = (sol1.replace("+-", " - "))
+                sol1 = (sol1.replace("--", "+ "))
+                sol1 = (sol1.replace("+ -", " - "))
+                sol1 = (sol1.replace("- -", "+ "))
+                entrada_pant2.set('')#limpia entrada de la pantalla2
+                entrada_pant3.set('')#limpia entrada de la pantalla3
+                pantalla3.insert(0,sol1)#Muestra el resultado final de la EDO con condición inicial en la pantalla3
+                entrada_pant7.set('')#limpia entrada de la pantalla7
+                entrada_pant6.set('')#limpia entrada de la pantalla6
+                #Realización de ciertos reemplazos en la solución
+                sol1 = (sol1.replace("y", ""))
+                sol1 = (sol1.replace("=", ""))
+                sol1 = (sol1.replace("^", "**"))
+                sol1 = (sol1.replace("e**", "exp"))
+                entra_funcion.insert(0,sol1)#La solucion final se le asigna a una entrada para graficar
+                mensaje="EDO EN CONDICIONES INICIALES ES:" 
+            elif((sol2!="")and(con_x=="")and(con_y==""))or((sol2!="")and(con_x!="")and(con_y==""))or((sol2!="")and(con_x=="")and(con_y!="")):
+                entrada_pant3.set('')#limpia entrada de la pantalla3
+                men_error="INGRESE CONDICIONES INICIALES"            
+        else:
+            entrada_pant3.set('')#limpia entrada de la pantalla3
+            entrada_pant2.set('')#limpia entrada de la pantalla2
+            men_error="INGRESE EDO Y CALCULE"
+    except ValueError:
+        entrada_pant2.set('')#limpia entrada de la pantalla2
+        entrada_pant3.set('')#limpia entrada de la pantalla3
+        m_error="ERROR AL RESOLVER EDO"  
+    
+#Botones
+boton0=Button(ventana, text='0',  command=lambda: ingreso_datos(0), width="4", height="1", background="white")#Ingreso del dato 0
+boton1=Button(ventana, text='1', command=lambda: ingreso_datos(1), width="4", height="1", background="white")#Ingreso del dato 1
+boton2=Button(ventana, text='2',  command=lambda: ingreso_datos(2), width="4", height="1", background="white")#Ingreso del dato 2
+boton3=Button(ventana, text='3',  command=lambda: ingreso_datos(3), width="4", height="1", background="white")#Ingreso del dato 3
+boton4=Button(ventana, text='4', command=lambda: ingreso_datos(4), width="4", height="1", background="white")#Ingreso del dato 4
+boton5=Button(ventana, text='5',  command=lambda: ingreso_datos(5), width="4", height="1", background="white")#Ingreso del dato 5
+boton6=Button(ventana, text='6',  command=lambda: ingreso_datos(6), width="4", height="1", background="white")#Ingreso del dato 6
+boton7=Button(ventana, text='7',  command=lambda: ingreso_datos(7), width="4", height="1", background="white")#Ingreso del dato 7
+boton8=Button(ventana, text='8', command=lambda: ingreso_datos(8), width="4", height="1", background="white")#Ingreso del dato 8
+boton9=Button(ventana, text='9', command=lambda: ingreso_datos(9), width="4", height="1", background="white")#Ingreso del dato 9
+
+boton_borrar_todo=Button(ventana, text='AC',command=lambda: borrar_todo(), width="4", height="1", background="red", foreground="white")#Boton para borrar todo
+boton_parentesis1=Button(ventana, text='(',  command=lambda: operaciones('('), width="4", height="1", background="white")#Ingreso del dato (
+boton_parentisis2=Button(ventana, text=')',  command=lambda: operaciones(')'), width="4", height="1", background="white")#Ingreso del dato )
+boton_punto=Button(ventana, text='.',  command=lambda: operaciones('.'), width="4", height="1", background="white")#Ingreso del dato .
+boton_raizcua=Button(ventana, text='√', command=lambda: operaciones('sqrt('), width="4", height="1", background="white")#Ingreso del dato √
+boton_exp=Button(ventana, text='^',  command=lambda: operaciones('^'), width="4", height="1", background="white")#Ingreso del dato ^
+boton_sen=Button(ventana, text='sen',  command=lambda: operaciones('sin('), width="4", height="1", background="white")#Ingreso del dato sen
+boton_cos=Button(ventana, text='cos',  command=lambda: operaciones('cos('), width="4", height="1", background="white")#Ingreso del dato cos
+boton_tan=Button(ventana, text='tan', command=lambda: operaciones('tan('), width="4", height="1", background="white")#Ingreso del dato tan
+boton_cot=Button(ventana, text='cot',  command=lambda: operaciones('cot('), width="4", height="1", background="white")#Ingreso del dato cot
+boton_csc=Button(ventana, text='csc',  command=lambda: operaciones('csc('), width="4", height="1", background="white")#Ingreso del dato csc
+boton_sec=Button(ventana, text='sec', command=lambda: operaciones('sec('), width="4", height="1", background="white")#Ingreso del dato sec
+boton_x=Button(ventana, text='x',  command=lambda: operaciones('x'), width="4", height="1", background="white")#Ingreso del dato x
+boton_y=Button(ventana, text='y',  command=lambda: operaciones('y'), width="4", height="1", background="white")#Ingreso del dato y
+boton_igual=Button(ventana, text='=',  command=lambda: operaciones('='), width="4", height="1", background="white")#Ingreso del dato e
+boton_parentisis=Button(ventana, text='( )',  command=lambda: operaciones('()'), width="4", height="1", background="white")#Ingreso del dato ( )
+boton_log=Button(ventana, text='log',  command=lambda: operaciones('log('), width="4", height="1", background="white")#Ingreso del dato log
+boton_DEL=Button(ventana, text='DEL',  command=lambda: borrar(), width="4", height="1", background="blue", foreground="white")#Boton para borrar dato por dato
+boton_exp2=Button(ventana, text='^2',  command=lambda: operaciones('^2'), width="4", height="1", background="white")#Ingreso del dato ^2
+boton_expo3=Button(ventana, text='^3',  command=lambda: operaciones('^3'), width="4", height="1", background="white")#Ingreso del dato ^3
+boton_expoe=Button(ventana, text='e^', command=lambda: operaciones('e^('), width="4", height="1", background="white")#Ingreso del dato e^
+boton_arsen=Button(ventana, text='arcsen', command=lambda: operaciones('asin('), width="4", height="1", background="white")#Ingreso del dato arsen
+boton_arcos=Button(ventana, text='arccos', command=lambda: operaciones('acos('), width="4", height="1", background="white")#Ingreso del dato arcos
+boton_artan=Button(ventana, text='arctan', command=lambda: operaciones('atan('), width="4", height="1", background="white")#Ingreso del dato artan
+boton_arcot=Button(ventana, text='arccot', command=lambda: operaciones('acot('), width="4", height="1", background="white")#Ingreso del dato arcot
+boton_arcsc=Button(ventana, text='arccsc', command=lambda: operaciones('acsc('), width="4", height="1", background="white")#Ingreso del dato arcsc
+boton_arsec=Button(ventana, text='arcsec', command=lambda: operaciones('asec('), width="4", height="1", background="white")#Ingreso del dato arsec
+
+boton_suma=Button(ventana, text='+', command=lambda: operaciones('+'), width="4", height="1", background="mediumaquamarine")#Boton para sumar datos
+boton_resta=Button(ventana, text='-', command=lambda:operaciones('-'), width="4", height="1", background="mediumaquamarine")#Boton para restar datos
+boton_mult=Button(ventana, text='*',  command=lambda: operaciones('*'), width="4", height="1", background="mediumaquamarine")#Boton para multiplicar datos
+boton_div=Button(ventana, text=chr(247),  command=lambda: operaciones('/'), width="4", height="1", background="mediumaquamarine")#Boton para dividir datos
+
+boton_EDO=Button(ventana, text='Resolver EDO', command=lambda: calcularEdo(),width="20", height="1", background="mediumaquamarine", font="arial 9 bold")#Boton para calcular EDO
+boton_Graficar=Button(ventana, text='GRAFICAR EDO', width="32", command=representacion, height="3", background="mediumaquamarine", font="arial 9 bold")#Boton para graficar EDO
+boton_condiciones=Button(ventana, text='Condiciones Iniciales', command=lambda: Condiciones_Iniciales(),width="18", height="3", background="white", font="arial 9 bold")#Boton para calcular condiciones iniciales
+
+boton_DEL.place(x=10, y=80)
+boton_parentesis1.place(x=60, y=80)
+boton_parentisis2.place(x=110, y=80)
+boton_suma.place(x=160, y=80)
+boton_resta.place(x=210, y=80)
+boton_mult.place(x=260, y=80)
+boton_div.place(x=310, y=80)
+boton_raizcua.place(x=360, y=80)
+boton_borrar_todo.place(x=410, y=80)
+
+boton_sen.place(x=10, y=130)
+boton_cos.place(x=60, y=130)
+boton_tan.place(x=110, y=130)
+boton_cot.place(x=160, y=130)
+boton_csc.place(x=210, y=130)
+boton_sec.place(x=260, y=130)
+boton_exp.place(x=310, y=130)
+boton_log.place(x=360, y=130)
+boton0.place(x=410, y=130)
+
+boton_arsec.place(x=10, y=180)
+boton_arcsc.place(x=60, y=180)
+boton_arsen.place(x=110, y=180)
+boton_arcos.place(x=160, y=180)
+boton_artan.place(x=210, y=180)
+boton_arcot.place(x=260, y=180)
+boton_x.place(x=310, y=180)
+boton_y.place(x=360, y=180)
+boton_parentisis.place(x=410, y=180)
+
+boton_igual.place(x=10, y=230)
+boton_punto.place(x=60, y=230)
+boton_expoe.place(x=110, y=230)
+boton_exp2.place(x=160, y=230)
+boton_expo3.place(x=210, y=230)
+
+boton1.place(x=10, y=280)
+boton2.place(x=60, y=280)
+boton3.place(x=110, y=280)
+boton4.place(x=10, y=330)
+boton5.place(x=60, y=330)
+boton6.place(x=110, y=330)
+boton7.place(x=10, y=380)
+boton8.place(x=60, y=380)
+boton9.place(x=110, y=380)
+
+boton_EDO.place(x=260, y=230)
+boton_Graficar.place(x=500, y=280)
+boton_condiciones.place(x=700, y=490)
+
+ventana.mainloop()
