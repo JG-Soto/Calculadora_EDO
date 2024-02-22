@@ -5,7 +5,7 @@ SI3 - 001
 #
 Grupo 1
 #
-Integrantes:/n
+Integrantes: 
 Cristofer Calero,
 Mathias Fernandez,
 Frixon Luna,
